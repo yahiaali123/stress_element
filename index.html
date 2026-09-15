@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Stress Element — Principal Stresses & Mohr's Circle</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0f0f1a;
+    color: #e0e0f0;
+    font-family: 'Segoe UI', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: #1a1a2e;
+    border-bottom: 1px solid #2a2a4a;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 1rem; font-weight: 600; color: #a0a0ff; letter-spacing: .04em; }
+  .hint { font-size: .72rem; color: #44447a; font-style: italic; }
+
+  main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+  .side {
+    width: 272px;
+    flex-shrink: 0;
+    border-right: 1px solid #2a2a4a;
+    background: #111120;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .canvas-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #09090f;
+    position: relative;
+  }
+
+  .view-btns {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 10;
+  }
+
+  .vbtn {
+    background: #14142a;
+    border: 1px solid #2a2a50;
+    color: #8080c0;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: background .12s, border-color .12s, color .12s;
+    min-width: 44px;
+  }
+  .vbtn:hover    { background: #1e1e40; border-color: #5050a0; color: #c0c0ff; }
+  .vbtn.active   { background: #22224a; border-color: #7070d0; color: #d0d0ff; }
+
+  #c3d {
+    display: block;
+    cursor: grab;
+  }
+  #c3d:active { cursor: grabbing; }
+
+  .mohr-panel {
+    flex: 1;
+    min-width: 0;
+    border-left: 1px solid #2a2a4a;
+    background: #0a0a15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .mohr-btns {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    gap: 5px;
+    z-index: 10;
+  }
+
+  .mbtn {
+    background: #14142a;
+    border: 1px solid #2a2a50;
+    color: #8080c0;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .mbtn:hover  { background: #1e1e40; border-color: #5050a0; color: #c0c0ff; }
+  .mbtn.active { background: #22224a; border-color: #7070d0; color: #d0d0ff; }
+
+  #cmohr {
+    display: block;
+  }
+
+  .card { border-bottom: 1px solid #1e1e36; padding: 12px 14px; }
+  .card-title {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: #6060a0;
+    margin-bottom: 10px;
+  }
+
+  .ig { margin-bottom: 10px; }
+  .ig:last-child { margin-bottom: 0; }
+  .ih {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .ilabel { font-size: .8rem; font-weight: 600; color: #c0c0e0; }
+  .ival { font-size: .8rem; color: #7070c0; font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: #7070ff;
+    cursor: pointer;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+  .ritem {
+    background: #0d0d20;
+    border: 1px solid #1e1e3a;
+    border-radius: 6px;
+    padding: 9px 11px;
+  }
+  .ritem.full { grid-column: 1 / -1; }
+  .rlabel {
+    font-size: .82rem;
+    color: #7070b0;
+    font-weight: 700;
+    letter-spacing: .03em;
+    margin-bottom: 5px;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  .rvalue {
+    font-size: 1.05rem;
+    color: #d0d0ff;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .rvalue.pos { color: #60d0a0; }
+  .rvalue.neg { color: #f06060; }
+
+  .sep { height: 1px; background: #1e1e36; margin: 4px 0; }
+
+  .rot-row {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+  }
+  .rot-row:last-child { margin-bottom: 0; }
+  .rot-btn {
+    background: #1a1a38; border: 1px solid #2a2a5a; color: #a0a0e0;
+    font-size: .75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .rot-btn:hover { background: #222248; border-color: #5050a0; }
+  .rot-label { font-size: .78rem; color: #8080b0; flex: 1; }
+
+  .angle-display {
+    font-size: .78rem; color: #7070c0; font-variant-numeric: tabular-nums;
+    text-align: right; min-width: 38px;
+  }
+
+  .inum {
+    width: 58px;
+    background: #0d0d22;
+    border: 1px solid #20204080;
+    border-radius: 3px;
+    color: #7070c0;
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    padding: 2px 5px;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .inum::-webkit-inner-spin-button,
+  .inum::-webkit-outer-spin-button { opacity: 0.35; }
+  .inum:focus { border-color: #5050a0; color: #c0c0ff; background: #111128; }
+
+  .inum-angle { width: 46px; }
+
+  /* ── Equations button ── */
+  .eq-open-btn {
+    margin-left: auto;
+    background: #14142e;
+    border: 1px solid #3a3a70;
+    color: #9090d0;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    padding: 5px 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .eq-open-btn:hover { background: #1e1e44; border-color: #6060b0; color: #c0c0ff; }
+
+  /* ── Equations modal overlay ── */
+  .eq-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #00000099;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .eq-overlay.open { display: flex; }
+
+  .eq-panel {
+    background: #10101e;
+    border: 1px solid #2a2a50;
+    border-radius: 10px;
+    width: min(880px, 100%);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 48px #00000080;
+  }
+
+  .eq-head {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid #1e1e38;
+    flex-shrink: 0;
+  }
+  .eq-head h2 { font-size: .92rem; font-weight: 700; color: #a0a0ff; letter-spacing: .05em; flex: 1; }
+  .eq-close-btn {
+    background: none; border: none; color: #5050a0; font-size: 1.3rem;
+    cursor: pointer; line-height: 1; padding: 0 4px;
+    transition: color .1s;
+  }
+  .eq-close-btn:hover { color: #c0c0ff; }
+
+  .eq-body {
+    overflow-y: auto;
+    padding: 18px 20px 22px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 20px;
+  }
+
+  .eq-section {
+    background: #0c0c1c;
+    border: 1px solid #1e1e38;
+    border-radius: 7px;
+    padding: 13px 15px;
+  }
+  .eq-section.wide { grid-column: 1 / -1; }
+  .eq-section-title {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #5858a0;
+    margin-bottom: 11px;
+  }
+
+  /* equation row */
+  .eq { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; flex-wrap: wrap; }
+  .eq:last-child { margin-bottom: 0; }
+  .eq-lhs { color: #9090d0; font-size: .82rem; font-weight: 700; min-width: 52px; font-variant-numeric: tabular-nums; }
+  .eq-rhs { color: #c0c0e8; font-size: .82rem; font-family: 'Courier New', monospace; }
+  .eq-note { color: #44447a; font-size: .72rem; font-style: italic; }
+
+  /* matrix */
+  .mat-wrap { display: flex; align-items: center; gap: 2px; }
+  .mat-brace {
+    font-size: 2.8rem; line-height: 1; color: #5050a0; font-weight: 100;
+    font-family: 'Courier New', monospace;
+    user-select: none;
+  }
+  .mat {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    column-gap: 14px;
+    row-gap: 3px;
+    padding: 2px 6px;
+    font-size: .8rem;
+    font-family: 'Courier New', monospace;
+    color: #c0c0e8;
+    text-align: center;
+  }
+  .mat .diag { color: #a0a0ff; font-weight: 700; }
+  .mat .shear { color: #ffd04088; }
+
+  /* fraction */
+  .frac {
+    display: inline-flex; flex-direction: column; align-items: center;
+    vertical-align: middle; font-family: 'Courier New', monospace; font-size: .78rem;
+  }
+  .frac .num { border-bottom: 1px solid #5050a0; padding: 0 3px 1px; color: #c0c0e8; }
+  .frac .den { padding: 1px 3px 0; color: #c0c0e8; }
+
+  /* color chips */
+  .chip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
+  .theme-btn { margin-left: auto; padding: 5px 12px; font-size: 0.74rem; font-weight: 700; border: 1px solid #303060; border-radius: 6px; background: #15152a; color: #8080c0; cursor: pointer; transition: all .15s; }
+  .theme-btn:hover { background: #1e1e3a; color: #b0b0ff; border-color: #5050aa; }
+  body.light { background: #f4f4fc; color: #1a1a3a; }
+  body.light header { background: #ffffff; border-bottom-color: #d8d8ec; }
+  body.light header h1 { color: #4040b0; }
+  body.light .hint { color: #9090b8; }
+  body.light .side { background: #fafafe; border-right-color: #d8d8ec; }
+  body.light .canvas-panel { background: #e8e8f4; }
+  body.light .mohr-panel { background: #f0f0fa; border-left-color: #d8d8ec; }
+  body.light .card { border-bottom-color: #e4e4f4; }
+  body.light .card-title { color: #7070b0; }
+  body.light .vbtn, body.light .mbtn, body.light .eq-open-btn { background: #eaeaf6; color: #5858b0; border-color: #c0c0e0; }
+  body.light .vbtn:hover, body.light .mbtn:hover, body.light .eq-open-btn:hover { background: #dcdcf0; color: #3838a0; border-color: #8888cc; }
+  body.light .vbtn.active, body.light .mbtn.active { background: #c8c8e8; color: #282890; border-color: #7070d0; }
+  body.light .inum, body.light input[type="number"] { background: #ffffff; border-color: #c0c0e0; color: #1a1a3a; }
+  body.light .inum:focus, body.light input[type="number"]:focus { border-color: #6060cc; }
+  body.light .ritem { background: #ffffff; border-color: #d8d8ec; }
+  body.light .rlabel { color: #6060a0; }
+  body.light .rvalue { color: #202050; }
+  body.light .rvalue.pos { color: #208050; }
+  body.light .rvalue.neg { color: #c03030; }
+  body.light .sep { background: #e0e0f0; }
+  body.light .rot-btn { background: #eaeaf6; color: #5858b0; border-color: #c0c0e0; }
+  body.light .rot-btn:hover { background: #dcdcf0; color: #3838a0; border-color: #8888cc; }
+  body.light .rot-label, body.light .ilabel, body.light .ival { color: #505080; }
+  body.light .frac .num { border-bottom-color: #8080c0; color: #303060; }
+  body.light .frac .den { color: #303060; }
+  body.light .eq-modal { background: #fafafe; border-color: #d8d8ec; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+  body.light .eq-title { color: #4040b0; border-bottom-color: #d8d8ec; }
+  body.light .eq-close { color: #8080b0; }
+  body.light .eq-close:hover { color: #cc4444; }
+  body.light .eq-block { background: #ffffff; border-color: #e4e4f4; }
+  body.light .eq-row { color: #202050; }
+  body.light .eq-row .hl { color: #b04040; }
+  body.light .eq-note { color: #707090; }
+  body.light .theme-btn { border-color: #c0c0e0; background: #eaeaf6; color: #5858b0; }
+  body.light .theme-btn:hover { background: #dcdcf0; color: #3838a0; border-color: #8888cc; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>3D Stress Element</h1>
+  <span class="hint">Drag canvas to orbit · Set stress components below</span>
+  <div style="flex:1"></div>
+  <button class="theme-btn" id="themeToggle">☾ Dark</button>
+  <button class="eq-open-btn" id="btn_eq">Equations</button>
+</header>
+
+<main>
+  <div class="side">
+    <!-- Stress Inputs -->
+    <div class="card">
+      <div class="card-title">Normal Stresses (σ)</div>
+      <div class="ig">
+        <div class="ih"><span class="ilabel">σ<sub>x</sub></span><input type="number" class="inum" id="n_sx" value="100" min="-200" max="200"></div>
+        <input type="range" id="s_sx" min="-200" max="200" value="100" step="1">
+      </div>
+      <div class="ig">
+        <div class="ih"><span class="ilabel">σ<sub>y</sub></span><input type="number" class="inum" id="n_sy" value="60" min="-200" max="200"></div>
+        <input type="range" id="s_sy" min="-200" max="200" value="60" step="1">
+      </div>
+      <div class="ig">
+        <div class="ih"><span class="ilabel">σ<sub>z</sub></span><input type="number" class="inum" id="n_sz" value="0" min="-200" max="200"></div>
+        <input type="range" id="s_sz" min="-200" max="200" value="0" step="1">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Shear Stresses (τ)</div>
+      <div class="ig">
+        <div class="ih"><span class="ilabel">τ<sub>xy</sub></span><input type="number" class="inum" id="n_sxy" value="40" min="-150" max="150"></div>
+        <input type="range" id="s_sxy" min="-150" max="150" value="40" step="1">
+      </div>
+      <div class="ig">
+        <div class="ih"><span class="ilabel">τ<sub>yz</sub></span><input type="number" class="inum" id="n_syz" value="0" min="-150" max="150"></div>
+        <input type="range" id="s_syz" min="-150" max="150" value="0" step="1">
+      </div>
+      <div class="ig">
+        <div class="ih"><span class="ilabel">τ<sub>xz</sub></span><input type="number" class="inum" id="n_sxz" value="0" min="-150" max="150"></div>
+        <input type="range" id="s_sxz" min="-150" max="150" value="0" step="1">
+      </div>
+    </div>
+
+    <!-- Rotation -->
+    <div class="card">
+      <div class="card-title">Rotate Element</div>
+      <div class="rot-row">
+        <span class="rot-label">Around Z</span>
+        <input type="number" class="inum inum-angle" id="n_rz" value="0" min="-180" max="180">
+        <input type="range" id="r_z" min="-180" max="180" value="0" step="1" style="width:110px">
+      </div>
+      <div class="rot-row">
+        <span class="rot-label">Around Y</span>
+        <input type="number" class="inum inum-angle" id="n_ry" value="0" min="-180" max="180">
+        <input type="range" id="r_y" min="-180" max="180" value="0" step="1" style="width:110px">
+      </div>
+      <div class="rot-row">
+        <span class="rot-label">Around X</span>
+        <input type="number" class="inum inum-angle" id="n_rx" value="0" min="-180" max="180">
+        <input type="range" id="r_x" min="-180" max="180" value="0" step="1" style="width:110px">
+      </div>
+      <div class="sep"></div>
+      <div class="ig" style="margin-top:6px">
+        <div class="card-title" style="margin-bottom:6px">Rotated Stresses</div>
+        <div class="results-grid" id="rot_stresses"></div>
+      </div>
+      <div class="sep" style="margin-top:10px"></div>
+      <div class="ig" style="margin-top:6px">
+        <div class="card-title" style="margin-bottom:6px">Rotated Strains</div>
+        <div class="results-grid" id="rot_strains"></div>
+      </div>
+    </div>
+
+    <!-- Principal Stresses -->
+    <div class="card">
+      <div class="card-title">Principal Stresses</div>
+      <div class="results-grid" id="principal_results"></div>
+    </div>
+
+    <!-- Extreme shear -->
+    <div class="card">
+      <div class="card-title">Max Shear Stresses</div>
+      <div class="results-grid" id="shear_results"></div>
+    </div>
+
+    <!-- Strains -->
+    <div class="card">
+      <div class="card-title">Strains (ε, γ)</div>
+      <div class="results-grid" id="strain_results"></div>
+    </div>
+
+    <!-- Deformed Shape -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center">
+        Deformed Shape
+        <label style="display:flex;align-items:center;gap:6px;margin-left:auto;cursor:pointer;font-size:.75rem;color:#a0c0e0;text-transform:none;letter-spacing:0;font-weight:600">
+          <input type="checkbox" id="cb_deform" style="accent-color:#ffa040;cursor:pointer;width:13px;height:13px">
+          Show
+        </label>
+      </div>
+      <div class="ig">
+        <div class="ih"><span class="ilabel">E</span><input type="number" class="inum" id="n_E" value="200" min="10" max="500"></div>
+        <input type="range" id="s_E" min="10" max="500" value="200" step="1">
+      </div>
+      <div class="ig">
+        <div class="ih"><span class="ilabel">ν</span><input type="number" class="inum" id="n_nu" value="0.30" min="0.00" max="0.49" step="0.01"></div>
+        <input type="range" id="s_nu" min="0" max="49" value="30" step="1">
+      </div>
+      <div id="deform_opts" style="display:none">
+        <div class="ig">
+          <div class="ih"><span class="ilabel">Scale ×</span><input type="number" class="inum" id="n_ds" value="0.50" min="0.01" max="5.00" step="0.01"></div>
+          <input type="range" id="s_ds" min="1" max="500" value="50" step="1">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-panel">
+    <div class="view-btns">
+      <button class="vbtn" data-theta="0"      data-phi="0"    title="View XY plane (along Z)">XY</button>
+      <button class="vbtn" data-theta="0"      data-phi="-1.5708" title="View XZ plane (along Y, from above)">XZ</button>
+      <button class="vbtn" data-theta="1.5708" data-phi="0"     title="View YZ plane (along X)">YZ</button>
+      <button class="vbtn active" data-theta="0.55" data-phi="-0.42" title="Isometric view from above">Iso</button>
+    </div>
+    <canvas id="c3d"></canvas>
+  </div>
+
+  <div class="mohr-panel">
+    <div class="mohr-btns">
+      <button class="mbtn active" id="btn_mohr_stress">Stress</button>
+      <button class="mbtn" id="btn_mohr_strain">Strain</button>
+    </div>
+    <canvas id="cmohr"></canvas>
+  </div>
+</main>
+
+<!-- ═══ Equations modal ═══════════════════════════════════════════ -->
+<div class="eq-overlay" id="eq_overlay">
+  <div class="eq-panel">
+    <div class="eq-head">
+      <h2>Equations &amp; Formulas</h2>
+      <button class="eq-close-btn" id="btn_eq_close">&#x2715;</button>
+    </div>
+    <div class="eq-body">
+
+      <!-- 1 · Stress tensor -->
+      <div class="eq-section">
+        <div class="eq-section-title">Stress Tensor</div>
+        <div class="eq" style="align-items:center;gap:10px">
+          <span class="eq-lhs">S =</span>
+          <div class="mat-wrap">
+            <span class="mat-brace">[</span>
+            <div class="mat">
+              <span class="diag">σ<sub>x</sub></span>  <span class="shear">τ<sub>xy</sub></span> <span class="shear">τ<sub>xz</sub></span>
+              <span class="shear">τ<sub>xy</sub></span> <span class="diag">σ<sub>y</sub></span>  <span class="shear">τ<sub>yz</sub></span>
+              <span class="shear">τ<sub>xz</sub></span> <span class="shear">τ<sub>yz</sub></span> <span class="diag">σ<sub>z</sub></span>
+            </div>
+            <span class="mat-brace">]</span>
+          </div>
+        </div>
+        <div class="eq" style="margin-top:8px">
+          <span class="eq-note">Symmetric: τ<sub>ij</sub> = τ<sub>ji</sub> &nbsp;·&nbsp; 6 independent components</span>
+        </div>
+      </div>
+
+      <!-- 2 · Coordinate transformation -->
+      <div class="eq-section">
+        <div class="eq-section-title">Coordinate Transformation</div>
+        <div class="eq"><span class="eq-lhs">Q =</span><span class="eq-rhs">R<sub>x</sub>(α) · R<sub>y</sub>(β) · R<sub>z</sub>(γ)</span></div>
+        <div class="eq"><span class="eq-lhs">S' =</span><span class="eq-rhs">Q<sup>T</sup> · S · Q</span></div>
+        <div class="eq" style="margin-top:6px;flex-direction:column;align-items:flex-start;gap:4px">
+          <span class="eq-note">R<sub>x</sub>(α): rotation α about x-axis</span>
+          <div class="mat-wrap" style="font-size:.75rem">
+            <span class="mat-brace" style="font-size:2.2rem">[</span>
+            <div class="mat" style="font-size:.75rem;column-gap:10px">
+              <span>1</span><span>0</span><span>0</span>
+              <span>0</span><span>cos α</span><span>−sin α</span>
+              <span>0</span><span>sin α</span><span>cos α</span>
+            </div>
+            <span class="mat-brace" style="font-size:2.2rem">]</span>
+          </div>
+          <span class="eq-note" style="margin-top:4px">R<sub>y</sub>(β): rotation β about y-axis</span>
+          <div class="mat-wrap" style="font-size:.75rem">
+            <span class="mat-brace" style="font-size:2.2rem">[</span>
+            <div class="mat" style="font-size:.75rem;column-gap:10px">
+              <span>cos β</span><span>0</span><span>sin β</span>
+              <span>0</span><span>1</span><span>0</span>
+              <span>−sin β</span><span>0</span><span>cos β</span>
+            </div>
+            <span class="mat-brace" style="font-size:2.2rem">]</span>
+          </div>
+          <span class="eq-note" style="margin-top:4px">R<sub>z</sub>(γ): rotation γ about z-axis</span>
+          <div class="mat-wrap" style="font-size:.75rem">
+            <span class="mat-brace" style="font-size:2.2rem">[</span>
+            <div class="mat" style="font-size:.75rem;column-gap:10px">
+              <span>cos γ</span><span>−sin γ</span><span>0</span>
+              <span>sin γ</span><span>cos γ</span><span>0</span>
+              <span>0</span><span>0</span><span>1</span>
+            </div>
+            <span class="mat-brace" style="font-size:2.2rem">]</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 · Principal stresses -->
+      <div class="eq-section">
+        <div class="eq-section-title">Principal Stresses</div>
+        <div class="eq"><span class="eq-lhs">det(S − σI)</span><span class="eq-rhs">= 0</span></div>
+        <div class="eq"><span class="eq-rhs">σ³ − I<sub>1</sub>σ² + I<sub>2</sub>σ − I<sub>3</sub> = 0</span></div>
+        <div style="height:6px"></div>
+        <div class="eq"><span class="eq-lhs">I<sub>1</sub> =</span><span class="eq-rhs">σ<sub>x</sub> + σ<sub>y</sub> + σ<sub>z</sub> &nbsp;=&nbsp; tr(S)</span></div>
+        <div class="eq"><span class="eq-lhs">I<sub>2</sub> =</span><span class="eq-rhs">σ<sub>x</sub>σ<sub>y</sub> + σ<sub>y</sub>σ<sub>z</sub> + σ<sub>x</sub>σ<sub>z</sub> − τ<sub>xy</sub>² − τ<sub>yz</sub>² − τ<sub>xz</sub>²</span></div>
+        <div class="eq"><span class="eq-lhs">I<sub>3</sub> =</span><span class="eq-rhs">det(S)</span></div>
+        <div style="height:6px"></div>
+        <div class="eq"><span class="eq-note">Eigenvalues sorted: σ<sub>1</sub> ≥ σ<sub>2</sub> ≥ σ<sub>3</sub></span></div>
+      </div>
+
+      <!-- 4 · Max shear stresses -->
+      <div class="eq-section">
+        <div class="eq-section-title">Maximum Shear Stresses</div>
+        <div class="eq">
+          <span class="eq-lhs">τ<sub>12</sub> =</span>
+          <div class="frac"><span class="num">σ<sub>1</sub> − σ<sub>2</sub></span><span class="den">2</span></div>
+        </div>
+        <div class="eq">
+          <span class="eq-lhs">τ<sub>23</sub> =</span>
+          <div class="frac"><span class="num">σ<sub>2</sub> − σ<sub>3</sub></span><span class="den">2</span></div>
+        </div>
+        <div class="eq">
+          <span class="eq-lhs">τ<sub>max</sub> =</span>
+          <div class="frac"><span class="num">σ<sub>1</sub> − σ<sub>3</sub></span><span class="den">2</span></div>
+          <span class="eq-note">(absolute maximum)</span>
+        </div>
+      </div>
+
+      <!-- 5 · Mohr's circle (stress) -->
+      <div class="eq-section">
+        <div class="eq-section-title">Mohr's Circle — Stress</div>
+        <div class="eq"><span class="eq-note">Three circles in the (σ, τ) plane:</span></div>
+        <div class="eq" style="gap:6px">
+          <span class="chip" style="background:#4060d0"></span>
+          <span class="eq-lhs" style="min-width:60px">σ<sub>1</sub>–σ<sub>2</sub>:</span>
+          <span class="eq-rhs">c = <span class="frac"><span class="num">σ<sub>1</sub>+σ<sub>2</sub></span><span class="den">2</span></span>, &nbsp;r = <span class="frac"><span class="num">|σ<sub>1</sub>−σ<sub>2</sub>|</span><span class="den">2</span></span></span>
+        </div>
+        <div class="eq" style="gap:6px">
+          <span class="chip" style="background:#d06040"></span>
+          <span class="eq-lhs" style="min-width:60px">σ<sub>2</sub>–σ<sub>3</sub>:</span>
+          <span class="eq-rhs">c = <span class="frac"><span class="num">σ<sub>2</sub>+σ<sub>3</sub></span><span class="den">2</span></span>, &nbsp;r = <span class="frac"><span class="num">|σ<sub>2</sub>−σ<sub>3</sub>|</span><span class="den">2</span></span></span>
+        </div>
+        <div class="eq" style="gap:6px">
+          <span class="chip" style="background:#40c080"></span>
+          <span class="eq-lhs" style="min-width:60px">σ<sub>1</sub>–σ<sub>3</sub>:</span>
+          <span class="eq-rhs">c = <span class="frac"><span class="num">σ<sub>1</sub>+σ<sub>3</sub></span><span class="den">2</span></span>, &nbsp;r = τ<sub>max</sub></span>
+        </div>
+        <div class="eq" style="margin-top:6px">
+          <span class="eq-note">Points x', y', z' show the rotated element's face stresses: (σ<sub>n</sub>, |τ<sub>resultant</sub>|)</span>
+        </div>
+      </div>
+
+      <!-- 6 · Hooke's law -->
+      <div class="eq-section">
+        <div class="eq-section-title">Generalised Hooke's Law (Isotropic)</div>
+        <div class="eq">
+          <span class="eq-lhs">ε<sub>ij</sub> =</span>
+          <div class="frac"><span class="num">(1+ν) σ<sub>ij</sub> − ν · tr(S) · δ<sub>ij</sub></span><span class="den">E</span></div>
+        </div>
+        <div style="height:6px"></div>
+        <div class="eq">
+          <span class="eq-lhs">ε<sub>x</sub> =</span>
+          <div class="frac"><span class="num">σ<sub>x</sub> − ν(σ<sub>y</sub> + σ<sub>z</sub>)</span><span class="den">E</span></div>
+        </div>
+        <div class="eq">
+          <span class="eq-lhs">ε<sub>y</sub> =</span>
+          <div class="frac"><span class="num">σ<sub>y</sub> − ν(σ<sub>x</sub> + σ<sub>z</sub>)</span><span class="den">E</span></div>
+        </div>
+        <div class="eq">
+          <span class="eq-lhs">ε<sub>z</sub> =</span>
+          <div class="frac"><span class="num">σ<sub>z</sub> − ν(σ<sub>x</sub> + σ<sub>y</sub>)</span><span class="den">E</span></div>
+        </div>
+        <div class="eq">
+          <span class="eq-lhs">γ<sub>xy</sub> =</span>
+          <div class="frac"><span class="num">2(1+ν) τ<sub>xy</sub></span><span class="den">E</span></div>
+          <span class="eq-rhs">=</span>
+          <div class="frac"><span class="num">τ<sub>xy</sub></span><span class="den">G</span></div>
+        </div>
+        <div class="eq" style="margin-top:4px">
+          <span class="eq-note">G = E / 2(1+ν) &nbsp;·&nbsp; Strain tensor off-diagonal = γ/2</span>
+        </div>
+      </div>
+
+      <!-- 7 · Principal strains & strain Mohr's circle -->
+      <div class="eq-section">
+        <div class="eq-section-title">Principal Strains &amp; Mohr's Circle — Strain</div>
+        <div class="eq"><span class="eq-rhs">ε³ − J<sub>1</sub>ε² + J<sub>2</sub>ε − J<sub>3</sub> = 0</span></div>
+        <div class="eq"><span class="eq-lhs">J<sub>1</sub> =</span><span class="eq-rhs">ε<sub>x</sub> + ε<sub>y</sub> + ε<sub>z</sub> &nbsp;=&nbsp; tr(ε)</span></div>
+        <div class="eq"><span class="eq-note">Eigenvalues sorted: ε<sub>1</sub> ≥ ε<sub>2</sub> ≥ ε<sub>3</sub></span></div>
+        <div style="height:6px"></div>
+        <div class="eq"><span class="eq-note">Mohr's circle: x-axis = ε,&nbsp; y-axis = γ/2</span></div>
+        <div class="eq">
+          <span class="eq-lhs">(γ/2)<sub>max</sub> =</span>
+          <div class="frac"><span class="num">ε<sub>1</sub> − ε<sub>3</sub></span><span class="den">2</span></div>
+        </div>
+        <div class="eq" style="margin-top:4px">
+          <span class="eq-note">Face points: (ε<sub>n</sub>, √(ε<sub>nt1</sub>² + ε<sub>nt2</sub>²)) &nbsp; where ε<sub>nt</sub> = γ<sub>nt</sub>/2</span>
+        </div>
+      </div>
+
+      <!-- 8 · Deformed shape -->
+      <div class="eq-section">
+        <div class="eq-section-title">Deformed Shape</div>
+        <div class="eq"><span class="eq-note">Displacement of a point <b>p</b> in the element:</span></div>
+        <div class="eq">
+          <span class="eq-lhs">u<sub>i</sub> =</span>
+          <span class="eq-rhs">scale · Σ<sub>j</sub> ε<sub>ij</sub> · p<sub>j</sub></span>
+        </div>
+        <div class="eq" style="margin-top:4px">
+          <span class="eq-note">Linear displacement field (small-strain). Dashed outline shows the deformed cube corners at the chosen scale factor.</span>
+        </div>
+      </div>
+
+    </div><!-- .eq-body -->
+  </div><!-- .eq-panel -->
+</div><!-- .eq-overlay -->
+
+<script>
+// ─── Math helpers ────────────────────────────────────────────────
+function matMul(A, B) {
+  const n = A.length;
+  const R = Array.from({length:n}, () => new Array(n).fill(0));
+  for (let i=0;i<n;i++) for (let j=0;j<n;j++) for (let k=0;k<n;k++) R[i][j] += A[i][k]*B[k][j];
+  return R;
+}
+function matT(M) { return M[0].map((_,i) => M.map(r=>r[i])); }
+
+function rotX(a) {
+  const c=Math.cos(a), s=Math.sin(a);
+  return [[1,0,0],[0,c,-s],[0,s,c]];
+}
+function rotY(a) {
+  const c=Math.cos(a), s=Math.sin(a);
+  return [[c,0,s],[0,1,0],[-s,0,c]];
+}
+function rotZ(a) {
+  const c=Math.cos(a), s=Math.sin(a);
+  return [[c,-s,0],[s,c,0],[0,0,1]];
+}
+
+// Stress tensor as 3x3 matrix
+function stressTensor(sx, sy, sz, txy, tyz, txz) {
+  return [
+    [sx,  txy, txz],
+    [txy, sy,  tyz],
+    [txz, tyz, sz ]
+  ];
+}
+
+// Rotate stress tensor into element local frame: S_local = Qᵀ·S·Q
+// Q maps local→world (v_world = Q·v_local), so local stress = Qᵀ·S·Q
+function rotateTensor(S, Q) {
+  return matMul(matT(Q), matMul(S, Q));
+}
+
+// Eigenvalues of 3x3 symmetric matrix (principal stresses)
+// Using analytic method for symmetric 3x3
+function eigenvalues3x3(S) {
+  const a=S[0][0], b=S[1][1], c=S[2][2];
+  const d=S[0][1], e=S[1][2], f=S[0][2];
+  const p1 = d*d + e*e + f*f;
+  if (p1 < 1e-12) return [a,b,c].sort((x,y)=>y-x);
+  const q = (a+b+c)/3;
+  const p2 = (a-q)*(a-q) + (b-q)*(b-q) + (c-q)*(c-q) + 2*p1;
+  const p = Math.sqrt(p2/6);
+  const B = [[( a-q)/p, d/p, f/p],
+              [d/p, (b-q)/p, e/p],
+              [f/p,  e/p, (c-q)/p]];
+  const detB = B[0][0]*(B[1][1]*B[2][2]-B[1][2]*B[2][1])
+             - B[0][1]*(B[1][0]*B[2][2]-B[1][2]*B[2][0])
+             + B[0][2]*(B[1][0]*B[2][1]-B[1][1]*B[2][0]);
+  let r = detB/2;
+  r = Math.max(-1, Math.min(1, r));
+  const phi = Math.acos(r)/3;
+  const PI2_3 = 2*Math.PI/3;
+  const ev1 = q + 2*p*Math.cos(phi);
+  const ev3 = q + 2*p*Math.cos(phi + PI2_3);
+  const ev2 = 3*q - ev1 - ev3;
+  return [ev1, ev2, ev3].sort((x,y)=>y-x);
+}
+
+// ─── Strain tensor from stress (generalised Hooke's law, isotropic) ─
+function strainFromStress(S, E, nu) {
+  const trS = S[0][0] + S[1][1] + S[2][2];
+  return S.map((row, i) => row.map((v, j) =>
+    i === j ? (v - nu * (trS - v)) / E : (1 + nu) * v / E
+  ));
+}
+
+// ─── State ───────────────────────────────────────────────────────
+let S = [[100,40,0],[40,60,0],[0,0,0]]; // will be updated from sliders
+let rx=0, ry=0, rz=0;
+let showDeformed = false, matE = 200, matNu = 0.30, defScale = 0.50;
+let mohrMode = 'stress'; // 'stress' | 'strain'
+
+// Camera orbit state
+let camTheta = 0.55, camPhi = -0.42, camDist = 280, camZoom = 1.0;
+let dragging=false, lastX=0, lastY=0;
+
+// ─── DOM refs ────────────────────────────────────────────────────
+let lightMode = false;
+const c3d   = document.getElementById('c3d');
+const ctx3d = c3d.getContext('2d');
+const cmohr = document.getElementById('cmohr');
+const ctxM  = cmohr.getContext('2d');
+
+// ─── Sliders → state ─────────────────────────────────────────────
+function readInputs() {
+  const g = id => +document.getElementById(id).value;
+  const sx  = g('s_sx');  const sy  = g('s_sy');  const sz  = g('s_sz');
+  const sxy = g('s_sxy'); const syz = g('s_syz'); const sxz = g('s_sxz');
+  S = stressTensor(sx, sy, sz, sxy, syz, sxz);
+  rx = g('r_x') * Math.PI / 180;
+  ry = g('r_y') * Math.PI / 180;
+  rz = g('r_z') * Math.PI / 180;
+  // sync number inputs (only if they don't have focus, to avoid disrupting typing)
+  const sync = (id, val) => { const el = document.getElementById(id); if (document.activeElement !== el) el.value = val; };
+  sync('n_sx', sx);  sync('n_sy', sy);  sync('n_sz', sz);
+  sync('n_sxy', sxy); sync('n_syz', syz); sync('n_sxz', sxz);
+  sync('n_rz', g('r_z')); sync('n_ry', g('r_y')); sync('n_rx', g('r_x'));
+}
+
+['s_sx','s_sy','s_sz','s_sxy','s_syz','s_sxz','r_x','r_y','r_z'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => { readInputs(); render(); });
+});
+
+// Number inputs → clamp, push to slider, re-render
+[
+  ['n_sx','s_sx'],['n_sy','s_sy'],['n_sz','s_sz'],
+  ['n_sxy','s_sxy'],['n_syz','s_syz'],['n_sxz','s_sxz'],
+  ['n_rz','r_z'],['n_ry','r_y'],['n_rx','r_x'],
+].forEach(([numId, sliderId]) => {
+  const num = document.getElementById(numId);
+  const sl  = document.getElementById(sliderId);
+  const push = () => {
+    const v = parseFloat(num.value);
+    if (isNaN(v)) return;
+    const clamped = Math.max(+sl.min, Math.min(+sl.max, v));
+    sl.value = clamped;
+    readInputs(); render();
+  };
+  num.addEventListener('input', push);
+  // On blur, also snap the displayed value to the clamped one
+  num.addEventListener('blur', () => {
+    const v = parseFloat(num.value);
+    num.value = isNaN(v) ? sl.value : Math.max(+sl.min, Math.min(+sl.max, v));
+  });
+});
+
+// ─── Deformed shape controls ─────────────────────────────────────
+document.getElementById('cb_deform').addEventListener('change', function() {
+  showDeformed = this.checked;
+  document.getElementById('deform_opts').style.display = showDeformed ? '' : 'none';
+  render();
+});
+
+document.getElementById('s_E').addEventListener('input', function() {
+  matE = +this.value;
+  const n = document.getElementById('n_E');
+  if (document.activeElement !== n) n.value = matE;
+  render();
+});
+document.getElementById('n_E').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  if (!isNaN(v)) { matE = Math.max(10, Math.min(500, v)); document.getElementById('s_E').value = matE; render(); }
+});
+
+document.getElementById('s_nu').addEventListener('input', function() {
+  matNu = this.value / 100;
+  const n = document.getElementById('n_nu');
+  if (document.activeElement !== n) n.value = matNu.toFixed(2);
+  render();
+});
+document.getElementById('n_nu').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  if (!isNaN(v)) { matNu = Math.max(0, Math.min(0.49, v)); document.getElementById('s_nu').value = Math.round(matNu * 100); render(); }
+});
+
+document.getElementById('s_ds').addEventListener('input', function() {
+  defScale = this.value / 100;
+  const n = document.getElementById('n_ds');
+  if (document.activeElement !== n) n.value = defScale.toFixed(2);
+  render();
+});
+document.getElementById('n_ds').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  if (!isNaN(v)) { defScale = Math.max(0.01, Math.min(5, v)); document.getElementById('s_ds').value = Math.round(defScale * 100); render(); }
+});
+
+// ─── 3D Projection ───────────────────────────────────────────────
+function project(pt, W, H) {
+  // Orthographic projection — parallel lines stay parallel, right angles stay right
+  const [x,y,z] = pt;
+  const cosT=Math.cos(camTheta), sinT=Math.sin(camTheta);
+  const cosP=Math.cos(camPhi),   sinP=Math.sin(camPhi);
+  const cx =  cosT*x + sinT*z;
+  const cy =  sinP*(-sinT*x + cosT*z) + cosP*y;
+  const cz = -cosP*(-sinT*x + cosT*z) + sinP*y;
+  // depth key (monotone in cz) used only for painter's-algorithm face sorting
+  return [W/2 + cx*camZoom, H/2 - cy*camZoom, camDist/(camDist+cz)];
+}
+
+function vecAdd(a,b) { return [a[0]+b[0],a[1]+b[1],a[2]+b[2]]; }
+function vecScale(v,s) { return [v[0]*s,v[1]*s,v[2]*s]; }
+function matVec(M,v) { return M.map(r=>r[0]*v[0]+r[1]*v[1]+r[2]*v[2]); }
+
+// ─── Draw 3D element ─────────────────────────────────────────────
+function drawElement3D() {
+  const W = c3d.width, H = c3d.height;
+  ctx3d.clearRect(0,0,W,H);
+
+  // Background
+  ctx3d.fillStyle = lightMode ? '#e8e8f4' : '#09090f';
+  ctx3d.fillRect(0,0,W,H);
+
+  // Rotation from sliders
+  const Q = matMul(rotX(rx), matMul(rotY(ry), rotZ(rz)));
+
+  // Cube half-size
+  const hs = 70;
+  const corners_local = [
+    [-1,-1,-1],[ 1,-1,-1],[ 1, 1,-1],[-1, 1,-1],
+    [-1,-1, 1],[ 1,-1, 1],[ 1, 1, 1],[-1, 1, 1]
+  ].map(c=>c.map(v=>v*hs));
+
+  // Apply Q rotation to corners
+  const corners = corners_local.map(c => matVec(Q, c));
+
+  // Rotated stress tensor
+  const Sr = rotateTensor(S, Q);
+
+  // Project all corners
+  const pts = corners.map(c => project(c, W, H));
+
+  // Face definitions: normal_idx = [normal_axis, tangent1_axis, tangent2_axis]
+  // Corners 0-3 have z=-1 (−z face), 4-7 have z=+1 (+z face), etc.
+  const faces = [
+    { verts:[0,1,2,3], normal_idx:[2,0,1], dir:-1, color:'#1a1a3a', label:'−z' },
+    { verts:[4,5,6,7], normal_idx:[2,0,1], dir: 1, color:'#1e1e40', label:'+z' },
+    { verts:[0,1,5,4], normal_idx:[1,0,2], dir:-1, color:'#1a2030', label:'−y' },
+    { verts:[3,2,6,7], normal_idx:[1,0,2], dir: 1, color:'#1e2438', label:'+y' },
+    { verts:[0,3,7,4], normal_idx:[0,1,2], dir:-1, color:'#1a2828', label:'−x' },
+    { verts:[1,2,6,5], normal_idx:[0,1,2], dir: 1, color:'#1e2c2c', label:'+x' },
+  ];
+
+  // Sort faces by depth (painter's algorithm)
+  const facesWithDepth = faces.map(f => {
+    const z = f.verts.reduce((s,i) => s+pts[i][2], 0)/4;
+    return {...f, depth: z};
+  });
+  facesWithDepth.sort((a,b)=>a.depth-b.depth);
+
+  for (const face of facesWithDepth) {
+    const fpts = face.verts.map(i=>pts[i]);
+
+    // Back-face cull: compute normal in screen space
+    const dx1=fpts[1][0]-fpts[0][0], dy1=fpts[1][1]-fpts[0][1];
+    const dx2=fpts[2][0]-fpts[0][0], dy2=fpts[2][1]-fpts[0][1];
+    const cross = dx1*dy2 - dy1*dx2;
+
+    ctx3d.beginPath();
+    ctx3d.moveTo(fpts[0][0], fpts[0][1]);
+    for (let i=1;i<fpts.length;i++) ctx3d.lineTo(fpts[i][0], fpts[i][1]);
+    ctx3d.closePath();
+    ctx3d.fillStyle = face.color;
+    ctx3d.fill();
+    ctx3d.strokeStyle = lightMode ? '#a0a0c08a' : '#3030608a';
+    ctx3d.lineWidth = 1;
+    ctx3d.stroke();
+
+    // 3D face centre (world space)
+    const fc3 = face.verts.reduce((a,vi)=>[a[0]+corners[vi][0]/4,a[1]+corners[vi][1]/4,a[2]+corners[vi][2]/4],[0,0,0]);
+
+    const [nax, t1ax, t2ax] = face.normal_idx;
+    // sigma: actual normal stress, positive = tension (no face.dir flip)
+    const sigma = Sr[nax][nax];
+    const tau1  = Sr[nax][t1ax];
+    const tau2  = Sr[nax][t2ax];
+
+    // Outward unit normal in LOCAL frame (face.dir gives the sign), then rotate to world
+    const nlocal = [0,0,0]; nlocal[nax] = face.dir;
+    const nworld = matVec(Q, nlocal);
+
+    // Scale: 3D world units per stress unit (hs=70 for a unit cube of half-size 70)
+    const asc = hs * 0.013;
+
+    // ── Normal stress arrow ──────────────────────────────────────
+    if (Math.abs(sigma) > 0.5) {
+      const col = STRESS_COLS[nax][nax];
+      const normLen3 = Math.abs(sigma) * asc;
+      const sign = sigma > 0 ? 1 : -1;
+      const head3 = vecAdd(fc3, vecScale(nworld, normLen3 * sign));
+      const [x1,y1] = project(fc3, W, H);
+      const [x2,y2] = project(head3, W, H);
+      drawArrow2D(ctx3d, x1, y1, x2, y2, col, 2.2, 8);
+      ctx3d.fillStyle = col;
+      ctx3d.font = 'bold 11px sans-serif';
+      ctx3d.fillText(Math.abs(sigma).toFixed(0), x2+4, y2-4);
+    }
+
+    // ── Shear stress arrows ──────────────────────────────────────
+    [[t1ax, tau1], [t2ax, tau2]].forEach(([tax, tau]) => {
+      if (Math.abs(tau) < 0.5) return;
+      const col = STRESS_COLS[nax][tax];   // symmetric: same color as on opposite face
+      const tlocal = [0,0,0]; tlocal[tax] = face.dir;
+      const tworld = matVec(Q, tlocal);
+      const shLen3 = Math.abs(tau) * asc;
+      const sign = tau > 0 ? 1 : -1;
+      const head3 = vecAdd(fc3, vecScale(tworld, shLen3 * sign));
+      const [x1,y1] = project(fc3, W, H);
+      const [x2,y2] = project(head3, W, H);
+      drawArrow2D(ctx3d, x1, y1, x2, y2, col, 2, 7);
+      ctx3d.fillStyle = col;
+      ctx3d.font = 'bold 11px sans-serif';
+      ctx3d.fillText(Math.abs(tau).toFixed(0), x2+4, y2-4);
+    });
+  }
+
+  // ── Deformed shape wireframe ────────────────────────────────────
+  if (showDeformed) {
+    const eps = strainFromStress(Sr, matE, matNu);
+    const defPts = corners_local.map(([x, y, z]) => {
+      const dx = defScale * (eps[0][0]*x + eps[0][1]*y + eps[0][2]*z);
+      const dy = defScale * (eps[1][0]*x + eps[1][1]*y + eps[1][2]*z);
+      const dz = defScale * (eps[2][0]*x + eps[2][1]*y + eps[2][2]*z);
+      return project(matVec(Q, [x+dx, y+dy, z+dz]), W, H);
+    });
+    const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+    ctx3d.save();
+    ctx3d.setLineDash([5, 4]);
+    ctx3d.strokeStyle = '#ffa040cc';
+    ctx3d.lineWidth = 1.8;
+    edges.forEach(([a, b]) => {
+      ctx3d.beginPath();
+      ctx3d.moveTo(defPts[a][0], defPts[a][1]);
+      ctx3d.lineTo(defPts[b][0], defPts[b][1]);
+      ctx3d.stroke();
+    });
+    // Legend label
+    ctx3d.setLineDash([]);
+    ctx3d.fillStyle = '#ffa040cc';
+    ctx3d.font = '10px sans-serif';
+    ctx3d.fillText('— deformed', W - 86, 16);
+    ctx3d.restore();
+  }
+
+  // Draw axis triad
+  drawAxisTriad(ctx3d, W-55, H-55, Q);
+
+  // Rotated stress label overlay
+  updateRotatedStresses(Sr);
+}
+
+function drawArrow2D(ctx, x1,y1, x2,y2, color, lw, hsize) {
+  const dx=x2-x1, dy=y2-y1;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  if(len<1) return;
+  const ux=dx/len, uy=dy/len;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.strokeStyle=color;
+  ctx.lineWidth=lw;
+  ctx.stroke();
+  // arrowhead
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-ux*hsize+uy*hsize*0.4, y2-uy*hsize-ux*hsize*0.4);
+  ctx.lineTo(x2-ux*hsize-uy*hsize*0.4, y2-uy*hsize+ux*hsize*0.4);
+  ctx.closePath();
+  ctx.fillStyle=color;
+  ctx.fill();
+}
+
+function drawAxisTriad(ctx, cx, cy, Q) {
+  const len = 28;
+  const axes = [[1,0,0],[0,1,0],[0,0,1]];
+  const colors = ['#f05050','#50d050','#5090ff'];
+  const labels = ['x','y','z'];
+  axes.forEach((ax,i) => {
+    const rotAx = matVec(Q, ax);
+    const proj = project(vecScale(rotAx,len*2), c3d.width, c3d.height);
+    const ex = proj[0]-c3d.width/2, ey = proj[1]-c3d.height/2;
+    const sc = len/Math.sqrt(ex*ex+ey*ey+0.001);
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+ex*sc, cy+ey*sc);
+    ctx.strokeStyle=colors[i];
+    ctx.lineWidth=2;
+    ctx.stroke();
+    ctx.fillStyle=colors[i];
+    ctx.font='bold 11px sans-serif';
+    ctx.fillText(labels[i], cx+ex*sc+3, cy+ey*sc+3);
+  });
+}
+
+// ─── Results panels ──────────────────────────────────────────────
+function fmt(v) { return v.toFixed(1); }
+function colorClass(v) { return v>=0?'pos':'neg'; }
+
+// Symmetric 3×3 color matrix — STRESS_COLS[i][j] = STRESS_COLS[j][i]
+// Diagonal: normal stresses (x=red, y=green, z=blue)
+// Off-diagonal: shear stresses (xy=yellow, yz=teal, xz=purple)
+const STRESS_COLS = [
+  ['#f05050', '#ffd040', '#c060e0'],  // σx,  τxy, τxz
+  ['#ffd040', '#50d050', '#40d8d0'],  // τyx, σy,  τyz
+  ['#c060e0', '#40d8d0', '#5090ff'],  // τzx, τzy, σz
+];
+
+function ritem(label, value, i, j) {
+  const col = STRESS_COLS[i][j];
+  return `<div class="ritem" style="border-color:${col}40">
+    <div class="rlabel" style="color:${col}">${label}</div>
+    <div class="rvalue" style="color:${col}">${fmt(value)}</div>
+  </div>`;
+}
+
+function updateRotatedStresses(Sr) {
+  const grid = document.getElementById('rot_stresses');
+  grid.innerHTML = [
+    ["σ'<sub>x</sub>",  Sr[0][0], 0,0],
+    ["σ'<sub>y</sub>",  Sr[1][1], 1,1],
+    ["σ'<sub>z</sub>",  Sr[2][2], 2,2],
+    ["τ'<sub>xy</sub>", Sr[0][1], 0,1],
+    ["τ'<sub>yz</sub>", Sr[1][2], 1,2],
+    ["τ'<sub>xz</sub>", Sr[0][2], 0,2],
+  ].map(([l,v,i,j]) => ritem(l, v, i, j)).join('');
+}
+
+function updatePrincipalStresses(evs) {
+  const grid = document.getElementById('principal_results');
+  const [s1,s2,s3] = evs;
+  grid.innerHTML = [
+    ['σ<sub>1</sub>', s1, 0,0],
+    ['σ<sub>2</sub>', s2, 1,1],
+    ['σ<sub>3</sub>', s3, 2,2],
+  ].map(([l,v,i,j]) => ritem(l, v, i, j)).join('');
+}
+
+function updateStrains() {
+  const eps = strainFromStress(S, matE, matNu);
+  const fmtS = v => {
+    const a = Math.abs(v);
+    if (a === 0) return '0.0000';
+    if (a < 0.001) return v.toExponential(2);
+    return v.toFixed(4);
+  };
+  const grid = document.getElementById('strain_results');
+  grid.innerHTML = [
+    ["ε<sub>x</sub>",   eps[0][0],    0, 0],
+    ["ε<sub>y</sub>",   eps[1][1],    1, 1],
+    ["ε<sub>z</sub>",   eps[2][2],    2, 2],
+    ["γ<sub>xy</sub>",  2*eps[0][1],  0, 1],
+    ["γ<sub>yz</sub>",  2*eps[1][2],  1, 2],
+    ["γ<sub>xz</sub>",  2*eps[0][2],  0, 2],
+  ].map(([l, v, i, j]) => {
+    const col = STRESS_COLS[i][j];
+    return `<div class="ritem" style="border-color:${col}40">
+      <div class="rlabel" style="color:${col}">${l}</div>
+      <div class="rvalue" style="color:${col}">${fmtS(v)}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateMaxShear(evs) {
+  const [s1,s2,s3] = evs;
+  const grid = document.getElementById('shear_results');
+  grid.innerHTML = [
+    ['τ<sub>12</sub>', (s1-s2)/2, 0,1],
+    ['τ<sub>23</sub>', (s2-s3)/2, 1,2],
+    ['τ<sub>abs</sub>', (s1-s3)/2, 0,2],
+  ].map(([l,v,i,j]) => ritem(l, Math.abs(v), i, j)).join('');
+}
+
+// ─── Mohr's Circle (all three circles) ──────────────────────────
+function drawMohrCircles(evs, Sr) {
+  const W = cmohr.width, H = cmohr.height;
+  ctxM.clearRect(0,0,W,H);
+  ctxM.fillStyle= lightMode ? '#f0f0fa' : '#0a0a18';
+  ctxM.fillRect(0,0,W,H);
+
+  const [s1,s2,s3] = evs; // s1 >= s2 >= s3
+
+  const ml=50, mr=24, mt=26, mb=36;
+  const plotW = W - ml - mr;
+  const plotH = H - mt - mb;
+
+  // Data bounds: circles span [s3, s1] on σ-axis, ±R_max on τ-axis
+  const R_max = (s1 - s3) / 2;
+  const sigSpan = (s1 - s3) || 100;
+  const tauSpan = R_max || 50;
+  const hPad = sigSpan * 0.14;
+  const vPad = tauSpan * 0.22;
+
+  const viewSigMin = s3 - hPad;
+  const viewSigMax = s1 + hPad;
+  const viewTauMax = R_max + vPad;
+
+  // Uniform scale: fit both axes
+  const scaleH = plotW / (viewSigMax - viewSigMin);
+  const scaleV = (plotH * 0.5) / viewTauMax;
+  const sc = Math.min(scaleH, scaleV);
+
+  // Pixel mapping (σ=0 may not be visible if all stresses are positive)
+  const sigToX = sig => ml + (sig - viewSigMin) * sc;
+  const tauToY = tau => mt + plotH * 0.5 - tau * sc;
+  const oy = tauToY(0); // y-pixel of τ=0 line
+
+  // Background grid lines
+  const tStep = pickTickStep(viewTauMax / 3);
+  ctxM.strokeStyle = lightMode ? '#e4e4f4' : '#18182e'; ctxM.lineWidth = 0.8;
+  for (let t = tStep; t < viewTauMax; t += tStep) {
+    [tauToY(t), tauToY(-t)].forEach(y => {
+      ctxM.beginPath(); ctxM.moveTo(ml, y); ctxM.lineTo(ml+plotW, y); ctxM.stroke();
+    });
+  }
+  const sStep = pickTickStep(sigSpan / 4);
+  let v = Math.ceil(viewSigMin / sStep) * sStep;
+  while (v <= viewSigMax) {
+    const x = sigToX(v);
+    ctxM.beginPath(); ctxM.moveTo(x, mt); ctxM.lineTo(x, mt+plotH); ctxM.stroke();
+    v += sStep;
+  }
+
+  // Axes
+  ctxM.strokeStyle='#404080'; ctxM.lineWidth=1.2;
+  ctxM.beginPath(); ctxM.moveTo(ml, oy); ctxM.lineTo(ml+plotW, oy); ctxM.stroke();
+  const zeroX = sigToX(0);
+  if (zeroX >= ml && zeroX <= ml+plotW) {
+    ctxM.beginPath(); ctxM.moveTo(zeroX, mt); ctxM.lineTo(zeroX, mt+plotH); ctxM.stroke();
+    ctxM.fillStyle='#5050a0'; ctxM.font='11px sans-serif';
+    ctxM.fillText('τ', zeroX+3, mt+10);
+  }
+  ctxM.fillStyle='#5050a0'; ctxM.font='11px sans-serif';
+  ctxM.fillText('σ', ml+plotW+3, oy+4);
+
+  // Tick marks + labels on σ axis
+  v = Math.ceil(viewSigMin / sStep) * sStep;
+  while (v <= viewSigMax) {
+    const x = sigToX(v);
+    ctxM.strokeStyle='#404080'; ctxM.lineWidth=1;
+    ctxM.beginPath(); ctxM.moveTo(x, oy-4); ctxM.lineTo(x, oy+4); ctxM.stroke();
+    ctxM.fillStyle='#404080'; ctxM.font='9px monospace'; ctxM.textAlign='center';
+    ctxM.fillText(v.toFixed(0), x, oy+14);
+    v += sStep;
+  }
+
+  // Tick marks + labels on τ axis
+  if (zeroX >= ml && zeroX <= ml+plotW) {
+    for (let t = tStep; t < viewTauMax; t += tStep) {
+      [t,-t].forEach(tau => {
+        const y = tauToY(tau);
+        if (y < mt || y > mt+plotH) return;
+        ctxM.strokeStyle='#404080'; ctxM.lineWidth=1;
+        ctxM.beginPath(); ctxM.moveTo(zeroX-4, y); ctxM.lineTo(zeroX+4, y); ctxM.stroke();
+        ctxM.fillStyle='#404080'; ctxM.font='9px monospace'; ctxM.textAlign='right';
+        ctxM.fillText(tau.toFixed(0), zeroX-6, y+3);
+      });
+    }
+  }
+  ctxM.textAlign='left';
+
+  // Three Mohr circles
+  const circles = [
+    { c:(s1+s2)/2, r:Math.abs(s1-s2)/2, color:'#4060d0', label:'σ₁-σ₂' },
+    { c:(s2+s3)/2, r:Math.abs(s2-s3)/2, color:'#d06040', label:'σ₂-σ₃' },
+    { c:(s1+s3)/2, r:Math.abs(s1-s3)/2, color:'#40c080', label:'σ₁-σ₃' },
+  ];
+
+  circles.forEach(({c,r,color,label}) => {
+    const cx = sigToX(c);
+    const rpx = r * sc;
+    ctxM.strokeStyle=color; ctxM.lineWidth=2;
+    if (rpx < 1) {
+      ctxM.beginPath(); ctxM.arc(cx, oy, 4, 0, Math.PI*2); ctxM.fillStyle=color; ctxM.fill();
+    } else {
+      ctxM.beginPath(); ctxM.arc(cx, oy, rpx, 0, Math.PI*2); ctxM.stroke();
+    }
+    ctxM.fillStyle=color; ctxM.font='bold 10px monospace'; ctxM.textAlign='center';
+    const labelY = oy - rpx - 7;
+    ctxM.fillText(label, cx, labelY > mt+10 ? labelY : oy - rpx*0.7 + 4);
+    ctxM.textAlign='left';
+  });
+
+  // Principal stress dots on σ axis
+  [[s1,'σ₁','#60d0a0'],[s2,'σ₂','#a0c0ff'],[s3,'σ₃','#f0a060']].forEach(([s,lbl,col]) => {
+    const x = sigToX(s);
+    ctxM.beginPath(); ctxM.arc(x, oy, 4.5, 0, Math.PI*2);
+    ctxM.fillStyle=col; ctxM.fill();
+    ctxM.fillStyle=col; ctxM.font='bold 10px monospace'; ctxM.textAlign='center';
+    ctxM.fillText(lbl, x, oy+22);
+    ctxM.fillStyle='#7070a0'; ctxM.font='9px monospace';
+    ctxM.fillText(s.toFixed(1), x, oy+33);
+    ctxM.textAlign='left';
+  });
+
+  // τmax annotation at top of outer circle
+  const tmax = (s1-s3)/2;
+  if (tmax > 0.5) {
+    const cx_outer = sigToX((s1+s3)/2);
+    const y_top = tauToY(tmax);
+    const labelY = y_top - 10;
+
+    // Background pill for readability
+    const label = 'τmax = ' + tmax.toFixed(1);
+    ctxM.font = 'bold 13px sans-serif';
+    const tw = ctxM.measureText(label).width;
+    const lx = cx_outer - tw/2 - 6;
+    const ly = (labelY - 13) < mt ? mt : labelY - 13;
+    ctxM.fillStyle = lightMode ? '#e0f0e8' : '#0d1a14';
+    ctxM.beginPath();
+    ctxM.roundRect(lx, ly, tw + 12, 18, 4);
+    ctxM.fill();
+
+    ctxM.fillStyle = '#40e090';
+    ctxM.textAlign = 'center';
+    ctxM.fillText(label, cx_outer, ly + 13);
+    ctxM.textAlign = 'left';
+  }
+
+  // ── Current orientation: face stress points ──────────────────────
+  // Each face of the rotated element maps to a point (σ, |τ|) on the diagram.
+  // σ = normal stress on that face, τ = resultant shear magnitude.
+  if (Sr) {
+    const facePts = [
+      { sig: Sr[0][0], tau: Math.hypot(Sr[0][1], Sr[0][2]), label: "x'", color: '#f05050' },
+      { sig: Sr[1][1], tau: Math.hypot(Sr[1][0], Sr[1][2]), label: "y'", color: '#50d050' },
+      { sig: Sr[2][2], tau: Math.hypot(Sr[2][0], Sr[2][1]), label: "z'", color: '#5090ff' },
+    ];
+
+    facePts.forEach(({ sig, tau, label, color }) => {
+      const px = sigToX(sig);
+      const py = tauToY(tau);
+
+      // Dashed vertical drop-line from point to σ-axis
+      ctxM.save();
+      ctxM.setLineDash([3, 4]);
+      ctxM.strokeStyle = color + '70';
+      ctxM.lineWidth = 1;
+      ctxM.beginPath(); ctxM.moveTo(px, oy); ctxM.lineTo(px, py); ctxM.stroke();
+      ctxM.restore();
+
+      // Dot
+      ctxM.beginPath();
+      ctxM.arc(px, py, 5.5, 0, Math.PI * 2);
+      ctxM.fillStyle = color;
+      ctxM.fill();
+      ctxM.strokeStyle = lightMode ? '#f0f0fa' : '#0a0a18';
+      ctxM.lineWidth = 1.5;
+      ctxM.stroke();
+
+      // Label above dot
+      ctxM.fillStyle = color;
+      ctxM.font = 'bold 10px monospace';
+      ctxM.textAlign = 'center';
+      ctxM.fillText(label, px, py - 9);
+      ctxM.textAlign = 'left';
+    });
+  }
+
+  // Title
+  ctxM.fillStyle='#5050a0'; ctxM.font='11px sans-serif';
+  ctxM.fillText("Mohr's Circle (3D)", ml, mt-8);
+}
+
+function pickTickStep(range) {
+  const raw = range / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw||1)));
+  const n = raw/mag;
+  if (n<2) return mag;
+  if (n<5) return 2*mag;
+  return 5*mag;
+}
+
+// ─── Rotated strains panel ───────────────────────────────────────
+function updateRotatedStrains(eps) {
+  const fmtS = v => {
+    const a = Math.abs(v);
+    if (a === 0) return '0.0000';
+    if (a < 0.001) return v.toExponential(2);
+    return v.toFixed(4);
+  };
+  const grid = document.getElementById('rot_strains');
+  grid.innerHTML = [
+    ["ε'<sub>x</sub>",     eps[0][0],    0, 0],
+    ["ε'<sub>y</sub>",     eps[1][1],    1, 1],
+    ["ε'<sub>z</sub>",     eps[2][2],    2, 2],
+    ["γ'<sub>xy</sub>/2",  eps[0][1],    0, 1],
+    ["γ'<sub>yz</sub>/2",  eps[1][2],    1, 2],
+    ["γ'<sub>xz</sub>/2",  eps[0][2],    0, 2],
+  ].map(([l, v, i, j]) => {
+    const col = STRESS_COLS[i][j];
+    return `<div class="ritem" style="border-color:${col}40">
+      <div class="rlabel" style="color:${col}">${l}</div>
+      <div class="rvalue" style="color:${col}">${fmtS(v)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Mohr's Circle for Strains ───────────────────────────────────
+function drawMohrCirclesStrain(evs_strain, eps_rotated) {
+  const W = cmohr.width, H = cmohr.height;
+  ctxM.clearRect(0,0,W,H);
+  ctxM.fillStyle= lightMode ? '#f0f0fa' : '#0a0a18';
+  ctxM.fillRect(0,0,W,H);
+
+  const [e1,e2,e3] = evs_strain;
+
+  const ml=55, mr=24, mt=26, mb=36;
+  const plotW = W - ml - mr;
+  const plotH = H - mt - mb;
+
+  const R_max = (e1 - e3) / 2;
+  const sigSpan = (e1 - e3) || 1e-9;
+  const tauSpan = R_max || 1e-10;
+  const hPad = sigSpan * 0.14;
+  const vPad = tauSpan * 0.22;
+
+  const viewSigMin = e3 - hPad;
+  const viewSigMax = e1 + hPad;
+  const viewTauMax = R_max + vPad;
+
+  const scaleH = plotW / ((viewSigMax - viewSigMin) || 1e-9);
+  const scaleV = (plotH * 0.5) / (viewTauMax || 1e-10);
+  const sc = Math.min(scaleH, scaleV);
+
+  const sigToX = sig => ml + (sig - viewSigMin) * sc;
+  const tauToY = tau => mt + plotH * 0.5 - tau * sc;
+  const oy = tauToY(0);
+
+  const fmtE = v => {
+    const a = Math.abs(v);
+    if (a === 0) return '0';
+    if (a < 0.0001) return v.toExponential(1);
+    if (a < 0.01)   return v.toExponential(2);
+    return v.toFixed(4);
+  };
+
+  // Background grid
+  const tStep = pickTickStep(viewTauMax / 3);
+  ctxM.strokeStyle = lightMode ? '#e4e4f4' : '#18182e'; ctxM.lineWidth = 0.8;
+  for (let t = tStep; t < viewTauMax; t += tStep) {
+    [tauToY(t), tauToY(-t)].forEach(y => {
+      ctxM.beginPath(); ctxM.moveTo(ml, y); ctxM.lineTo(ml+plotW, y); ctxM.stroke();
+    });
+  }
+  const sStep = pickTickStep(sigSpan / 4);
+  let v = Math.ceil(viewSigMin / sStep) * sStep;
+  while (v <= viewSigMax + sStep * 0.01) {
+    const x = sigToX(v);
+    ctxM.beginPath(); ctxM.moveTo(x, mt); ctxM.lineTo(x, mt+plotH); ctxM.stroke();
+    v += sStep;
+  }
+
+  // Axes
+  ctxM.strokeStyle='#404080'; ctxM.lineWidth=1.2;
+  ctxM.beginPath(); ctxM.moveTo(ml, oy); ctxM.lineTo(ml+plotW, oy); ctxM.stroke();
+  const zeroX = sigToX(0);
+  if (zeroX >= ml && zeroX <= ml+plotW) {
+    ctxM.beginPath(); ctxM.moveTo(zeroX, mt); ctxM.lineTo(zeroX, mt+plotH); ctxM.stroke();
+    ctxM.fillStyle='#5050a0'; ctxM.font='11px sans-serif';
+    ctxM.fillText('γ/2', zeroX+3, mt+10);
+  }
+  ctxM.fillStyle='#5050a0'; ctxM.font='11px sans-serif';
+  ctxM.fillText('ε', ml+plotW+3, oy+4);
+
+  // ε-axis ticks
+  v = Math.ceil(viewSigMin / sStep) * sStep;
+  while (v <= viewSigMax + sStep * 0.01) {
+    const x = sigToX(v);
+    ctxM.strokeStyle='#404080'; ctxM.lineWidth=1;
+    ctxM.beginPath(); ctxM.moveTo(x, oy-4); ctxM.lineTo(x, oy+4); ctxM.stroke();
+    ctxM.fillStyle='#404080'; ctxM.font='8px monospace'; ctxM.textAlign='center';
+    ctxM.fillText(fmtE(v), x, oy+14);
+    v += sStep;
+  }
+
+  // γ/2-axis ticks
+  if (zeroX >= ml && zeroX <= ml+plotW) {
+    for (let t = tStep; t < viewTauMax; t += tStep) {
+      [t,-t].forEach(tau => {
+        const y = tauToY(tau);
+        if (y < mt || y > mt+plotH) return;
+        ctxM.strokeStyle='#404080'; ctxM.lineWidth=1;
+        ctxM.beginPath(); ctxM.moveTo(zeroX-4, y); ctxM.lineTo(zeroX+4, y); ctxM.stroke();
+        ctxM.fillStyle='#404080'; ctxM.font='8px monospace'; ctxM.textAlign='right';
+        ctxM.fillText(fmtE(tau), zeroX-6, y+3);
+      });
+    }
+  }
+  ctxM.textAlign='left';
+
+  // Three Mohr circles
+  const circles = [
+    { c:(e1+e2)/2, r:Math.abs(e1-e2)/2, color:'#4060d0', label:'ε₁-ε₂' },
+    { c:(e2+e3)/2, r:Math.abs(e2-e3)/2, color:'#d06040', label:'ε₂-ε₃' },
+    { c:(e1+e3)/2, r:Math.abs(e1-e3)/2, color:'#40c080', label:'ε₁-ε₃' },
+  ];
+  circles.forEach(({c,r,color,label}) => {
+    const cx = sigToX(c);
+    const rpx = r * sc;
+    ctxM.strokeStyle=color; ctxM.lineWidth=2;
+    if (rpx < 1) {
+      ctxM.beginPath(); ctxM.arc(cx, oy, 4, 0, Math.PI*2); ctxM.fillStyle=color; ctxM.fill();
+    } else {
+      ctxM.beginPath(); ctxM.arc(cx, oy, rpx, 0, Math.PI*2); ctxM.stroke();
+    }
+    ctxM.fillStyle=color; ctxM.font='bold 10px monospace'; ctxM.textAlign='center';
+    const labelY = oy - rpx - 7;
+    ctxM.fillText(label, cx, labelY > mt+10 ? labelY : oy - rpx*0.7 + 4);
+    ctxM.textAlign='left';
+  });
+
+  // Principal strain dots on ε axis
+  [[e1,'ε₁','#60d0a0'],[e2,'ε₂','#a0c0ff'],[e3,'ε₃','#f0a060']].forEach(([s,lbl,col]) => {
+    const x = sigToX(s);
+    ctxM.beginPath(); ctxM.arc(x, oy, 4.5, 0, Math.PI*2);
+    ctxM.fillStyle=col; ctxM.fill();
+    ctxM.fillStyle=col; ctxM.font='bold 10px monospace'; ctxM.textAlign='center';
+    ctxM.fillText(lbl, x, oy+22);
+    ctxM.fillStyle='#7070a0'; ctxM.font='8px monospace';
+    ctxM.fillText(fmtE(s), x, oy+33);
+    ctxM.textAlign='left';
+  });
+
+  // (γ/2)_max annotation
+  const gmax = (e1-e3)/2;
+  if (gmax > 1e-12) {
+    const cx_outer = sigToX((e1+e3)/2);
+    const y_top = tauToY(gmax);
+    const label = '(γ/2)max = ' + fmtE(gmax);
+    ctxM.font = 'bold 11px sans-serif';
+    const tw = ctxM.measureText(label).width;
+    const lx = cx_outer - tw/2 - 6;
+    const lyAdj = Math.max(mt, y_top - 23);
+    ctxM.fillStyle = lightMode ? '#e0f0e8' : '#0d1a14';
+    ctxM.beginPath();
+    ctxM.roundRect(lx, lyAdj, tw + 12, 18, 4);
+    ctxM.fill();
+    ctxM.fillStyle = '#40e090';
+    ctxM.textAlign = 'center';
+    ctxM.fillText(label, cx_outer, lyAdj + 13);
+    ctxM.textAlign = 'left';
+  }
+
+  // Current orientation face points (ε, γ/2) — off-diagonal tensor entries are already γ/2
+  if (eps_rotated) {
+    const facePts = [
+      { sig: eps_rotated[0][0], tau: Math.hypot(eps_rotated[0][1], eps_rotated[0][2]), label: "x'", color: '#f05050' },
+      { sig: eps_rotated[1][1], tau: Math.hypot(eps_rotated[1][0], eps_rotated[1][2]), label: "y'", color: '#50d050' },
+      { sig: eps_rotated[2][2], tau: Math.hypot(eps_rotated[2][0], eps_rotated[2][1]), label: "z'", color: '#5090ff' },
+    ];
+    facePts.forEach(({ sig, tau, label, color }) => {
+      const px = sigToX(sig);
+      const py = tauToY(tau);
+      ctxM.save();
+      ctxM.setLineDash([3, 4]);
+      ctxM.strokeStyle = color + '70';
+      ctxM.lineWidth = 1;
+      ctxM.beginPath(); ctxM.moveTo(px, oy); ctxM.lineTo(px, py); ctxM.stroke();
+      ctxM.restore();
+      ctxM.beginPath();
+      ctxM.arc(px, py, 5.5, 0, Math.PI * 2);
+      ctxM.fillStyle = color;
+      ctxM.fill();
+      ctxM.strokeStyle = lightMode ? '#f0f0fa' : '#0a0a18';
+      ctxM.lineWidth = 1.5;
+      ctxM.stroke();
+      ctxM.fillStyle = color;
+      ctxM.font = 'bold 10px monospace';
+      ctxM.textAlign = 'center';
+      ctxM.fillText(label, px, py - 9);
+      ctxM.textAlign = 'left';
+    });
+  }
+
+  ctxM.fillStyle='#5050a0'; ctxM.font='11px sans-serif';
+  ctxM.fillText("Mohr's Circle (Strain)", ml, mt-8);
+}
+
+// ─── Current stress display on element faces ─────────────────────
+// (done inline in drawElement3D via updateRotatedStresses)
+
+// ─── Main render ─────────────────────────────────────────────────
+function render() {
+  const Q = matMul(rotX(rx), matMul(rotY(ry), rotZ(rz)));
+  const Sr = rotateTensor(S, Q);
+  const evs = eigenvalues3x3(S); // principal stresses are invariant
+  const eps_r = strainFromStress(Sr, matE, matNu);
+  const eps0  = strainFromStress(S,  matE, matNu);
+  const evs_strain = eigenvalues3x3(eps0); // principal strains are invariant
+
+  drawElement3D();
+  if (mohrMode === 'stress') {
+    drawMohrCircles(evs, Sr);
+  } else {
+    drawMohrCirclesStrain(evs_strain, eps_r);
+  }
+  updatePrincipalStresses(evs);
+  updateMaxShear(evs);
+  updateStrains();
+  updateRotatedStrains(eps_r);
+}
+
+// ─── Orbit camera ────────────────────────────────────────────────
+c3d.addEventListener('mousedown', e => { dragging=true; lastX=e.clientX; lastY=e.clientY; });
+window.addEventListener('mouseup', () => dragging=false);
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  camTheta += dx * 0.012;
+  camPhi   -= dy * 0.012;
+  camPhi = Math.max(-Math.PI/2+0.05, Math.min(Math.PI/2-0.05, camPhi));
+  lastX=e.clientX; lastY=e.clientY;
+  clearActiveBtn();
+  render();
+});
+
+// ─── Snap-to-view buttons ─────────────────────────────────────────
+let animRaf = null;
+let targetTheta = camTheta, targetPhi = camPhi;
+
+function clearActiveBtn() {
+  document.querySelectorAll('.vbtn').forEach(b => b.classList.remove('active'));
+}
+
+function animateToView() {
+  const dT = targetTheta - camTheta;
+  const dP = targetPhi   - camPhi;
+  if (Math.abs(dT) < 0.003 && Math.abs(dP) < 0.003) {
+    camTheta = targetTheta;
+    camPhi   = targetPhi;
+    render();
+    animRaf = null;
+    return;
+  }
+  camTheta += dT * 0.14;
+  camPhi   += dP * 0.14;
+  render();
+  animRaf = requestAnimationFrame(animateToView);
+}
+
+function setView(theta, phi, btn) {
+  if (animRaf) cancelAnimationFrame(animRaf);
+  targetTheta = theta;
+  targetPhi   = Math.max(-Math.PI/2+0.05, Math.min(Math.PI/2-0.05, phi));
+  clearActiveBtn();
+  if (btn) btn.classList.add('active');
+  animRaf = requestAnimationFrame(animateToView);
+}
+
+document.querySelectorAll('.vbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const theta = parseFloat(btn.dataset.theta);
+    const phi   = parseFloat(btn.dataset.phi);
+    setView(theta, phi, btn);
+  });
+});
+c3d.addEventListener('wheel', e => {
+  e.preventDefault();
+  camZoom = Math.max(0.3, Math.min(4.0, camZoom * (1 - e.deltaY * 0.001)));
+  render();
+}, {passive:false});
+
+// Touch support
+c3d.addEventListener('touchstart', e=>{ dragging=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; e.preventDefault(); },{passive:false});
+c3d.addEventListener('touchend', ()=>dragging=false);
+c3d.addEventListener('touchmove', e=>{
+  if (!dragging) return;
+  const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY;
+  camTheta+=dx*0.012; camPhi-=dy*0.012;
+  camPhi=Math.max(-Math.PI/2+0.05,Math.min(Math.PI/2-0.05,camPhi));
+  lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
+  render(); e.preventDefault();
+},{passive:false});
+
+// ─── Equations modal ─────────────────────────────────────────────
+const eqOverlay = document.getElementById('eq_overlay');
+document.getElementById('btn_eq').addEventListener('click', () => eqOverlay.classList.add('open'));
+document.getElementById('btn_eq_close').addEventListener('click', () => eqOverlay.classList.remove('open'));
+eqOverlay.addEventListener('click', e => { if (e.target === eqOverlay) eqOverlay.classList.remove('open'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') eqOverlay.classList.remove('open'); });
+
+// ─── Mohr mode toggle ────────────────────────────────────────────
+document.getElementById('btn_mohr_stress').addEventListener('click', function() {
+  mohrMode = 'stress';
+  this.classList.add('active');
+  document.getElementById('btn_mohr_strain').classList.remove('active');
+  render();
+});
+document.getElementById('btn_mohr_strain').addEventListener('click', function() {
+  mohrMode = 'strain';
+  this.classList.add('active');
+  document.getElementById('btn_mohr_stress').classList.remove('active');
+  render();
+});
+
+// ─── Resize canvases to fill their containers ────────────────────
+function resizeCanvases() {
+  const cp = document.querySelector('.canvas-panel');
+  const mp = document.querySelector('.mohr-panel');
+  const r1 = cp.getBoundingClientRect();
+  const r2 = mp.getBoundingClientRect();
+  if (r1.width > 10 && r1.height > 10) {
+    c3d.width  = Math.floor(r1.width);
+    c3d.height = Math.floor(r1.height);
+  }
+  if (r2.width > 10 && r2.height > 10) {
+    cmohr.width  = Math.floor(r2.width);
+    cmohr.height = Math.floor(r2.height);
+  }
+  render();
+}
+window.addEventListener('resize', resizeCanvases);
+
+// ─── Init ────────────────────────────────────────────────────────
+document.getElementById('themeToggle').addEventListener('click', (e) => {
+  lightMode = !lightMode;
+  if (lightMode) {
+    document.body.classList.add('light');
+    e.target.textContent = '☀ Light';
+  } else {
+    document.body.classList.remove('light');
+    e.target.textContent = '☾ Dark';
+  }
+  render();
+});
+readInputs();
+// Wait one frame for layout to settle before measuring panel sizes
+requestAnimationFrame(resizeCanvases);
+</script>
+</body>
+</html>
