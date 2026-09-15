@@ -41,6 +41,13 @@
     overflow-y: auto;
   }
 
+  .viz-row {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+
   .canvas-panel {
     flex: 1;
     min-width: 0;
@@ -373,6 +380,65 @@
   body.light .eq-note { color: #707090; }
   body.light .theme-btn { border-color: #c0c0e0; background: #eaeaf6; color: #5858b0; }
   body.light .theme-btn:hover { background: #dcdcf0; color: #3838a0; border-color: #8888cc; }
+
+  /* ══ Responsive: tablets & phones ══════════════════════════════
+     The 3D canvas + Mohr's circle stay pinned to the top of the
+     viewport (position: sticky) while the controls panel scrolls
+     underneath them. */
+  @media (max-width: 1024px) {
+    body { height: auto; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
+    main { flex-direction: column; overflow: visible; height: auto; min-height: 0; }
+
+    .viz-row {
+      order: 1;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      flex-shrink: 0;
+      box-shadow: 0 6px 16px #00000070;
+    }
+
+    .side {
+      order: 2;
+      width: 100%;
+      flex: none;
+      border-right: none;
+      border-top: 1px solid #2a2a4a;
+      max-height: none;
+      overflow-y: visible;
+    }
+    body.light .side { border-top-color: #d8d8ec; }
+  }
+
+  /* Tablet: canvas + Mohr side by side, shorter so controls are reachable */
+  @media (max-width: 1024px) and (min-width: 601px) {
+    .viz-row { flex-direction: row; height: 46vh; }
+  }
+
+  /* Phone: canvas + Mohr stacked, canvas gets more room */
+  @media (max-width: 600px) {
+    .viz-row { flex-direction: column; height: 60vh; }
+    .canvas-panel { flex: 1.4; min-height: 0; }
+    .mohr-panel   { flex: 1; min-height: 0; border-left: none; border-top: 1px solid #2a2a4a; }
+    body.light .mohr-panel { border-top-color: #d8d8ec; }
+
+    header { flex-wrap: wrap; padding: 8px 12px; gap: 8px 10px; }
+    header h1 { font-size: .92rem; }
+    .hint { display: none; }
+    .theme-btn, .eq-open-btn { padding: 7px 12px; font-size: .7rem; }
+
+    .card { padding: 11px 12px; }
+    .vbtn, .mbtn { padding: 7px 11px; font-size: .74rem; }
+    .rot-row { flex-wrap: wrap; row-gap: 6px; }
+    input[type=range] { min-height: 24px; }
+
+    .eq-body { grid-template-columns: 1fr; padding: 14px 16px 18px; }
+    .eq-panel { max-height: 85vh; }
+  }
+
+  @media (max-width: 380px) {
+    .rot-row input[type=range] { width: 84px !important; }
+  }
 </style>
 </head>
 <body>
@@ -494,22 +560,24 @@
     </div>
   </div>
 
-  <div class="canvas-panel">
-    <div class="view-btns">
-      <button class="vbtn" data-theta="0"      data-phi="0"    title="View XY plane (along Z)">XY</button>
-      <button class="vbtn" data-theta="0"      data-phi="-1.5708" title="View XZ plane (along Y, from above)">XZ</button>
-      <button class="vbtn" data-theta="1.5708" data-phi="0"     title="View YZ plane (along X)">YZ</button>
-      <button class="vbtn active" data-theta="0.55" data-phi="-0.42" title="Isometric view from above">Iso</button>
+  <div class="viz-row">
+    <div class="canvas-panel">
+      <div class="view-btns">
+        <button class="vbtn" data-theta="0"      data-phi="0"    title="View XY plane (along Z)">XY</button>
+        <button class="vbtn" data-theta="0"      data-phi="-1.5708" title="View XZ plane (along Y, from above)">XZ</button>
+        <button class="vbtn" data-theta="1.5708" data-phi="0"     title="View YZ plane (along X)">YZ</button>
+        <button class="vbtn active" data-theta="0.55" data-phi="-0.42" title="Isometric view from above">Iso</button>
+      </div>
+      <canvas id="c3d"></canvas>
     </div>
-    <canvas id="c3d"></canvas>
-  </div>
 
-  <div class="mohr-panel">
-    <div class="mohr-btns">
-      <button class="mbtn active" id="btn_mohr_stress">Stress</button>
-      <button class="mbtn" id="btn_mohr_strain">Strain</button>
+    <div class="mohr-panel">
+      <div class="mohr-btns">
+        <button class="mbtn active" id="btn_mohr_stress">Stress</button>
+        <button class="mbtn" id="btn_mohr_strain">Strain</button>
+      </div>
+      <canvas id="cmohr"></canvas>
     </div>
-    <canvas id="cmohr"></canvas>
   </div>
 </main>
 
@@ -1698,6 +1766,7 @@ function resizeCanvases() {
   render();
 }
 window.addEventListener('resize', resizeCanvases);
+window.addEventListener('orientationchange', () => requestAnimationFrame(resizeCanvases));
 
 // ─── Init ────────────────────────────────────────────────────────
 document.getElementById('themeToggle').addEventListener('click', (e) => {
