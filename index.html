@@ -410,16 +410,38 @@
     body.light .side { border-top-color: #d8d8ec; }
   }
 
-  /* Tablet: canvas + Mohr side by side, shorter so controls are reachable */
+  /* Tablet: canvas + Mohr side by side, tall enough to read clearly */
   @media (max-width: 1024px) and (min-width: 601px) {
-    .viz-row { flex-direction: row; height: 46vh; }
+    .viz-row { flex-direction: row; height: 56vh; min-height: 380px; }
   }
 
-  /* Phone: canvas + Mohr stacked, canvas gets more room */
+  /* Phone: only the 3D canvas stays pinned (sticky) at a generous size.
+     Mohr's circle scrolls in afterwards at full size instead of being
+     squeezed to share the sticky area with the 3D view. */
   @media (max-width: 600px) {
-    .viz-row { flex-direction: column; height: 60vh; }
-    .canvas-panel { flex: 1.4; min-height: 0; }
-    .mohr-panel   { flex: 1; min-height: 0; border-left: none; border-top: 1px solid #2a2a4a; }
+    .viz-row { display: contents; }
+
+    .canvas-panel {
+      order: 1;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      width: 100%;
+      flex: none;
+      height: 58vh;
+      min-height: 320px;
+      box-shadow: 0 6px 16px #00000070;
+    }
+
+    .mohr-panel {
+      order: 3;
+      width: 100%;
+      flex: none;
+      height: 62vh;
+      min-height: 340px;
+      border-left: none;
+      border-top: 1px solid #2a2a4a;
+    }
     body.light .mohr-panel { border-top-color: #d8d8ec; }
 
     header { flex-wrap: wrap; padding: 8px 12px; gap: 8px 10px; }
